@@ -69,3 +69,33 @@ jobs:
           curl -f http://localhost:8080
           docker stop meteotn-test
           docker rm meteotn-test
+          
+                # Trivy scan: readable table in the logs (for the report screenshot)
+      - name: Scan Docker image with Trivy (table)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ env.DOCKER_IMAGE_NAME }}
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '0'
+
+      # Trivy scan: JSON report + fail the pipeline on CRITICAL/HIGH
+      - name: Scan Docker image with Trivy (gate)
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: ${{ env.DOCKER_IMAGE_NAME }}
+          format: 'json'
+          output: 'trivy-report.json'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # Upload the Trivy report (even if the scan fails)
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: trivy-report.json
+          if-no-files-found: ignore
