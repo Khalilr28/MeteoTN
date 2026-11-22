@@ -27,7 +27,7 @@ jobs:
 
       # Upload the Gitleaks report (even if the scan fails)
       - name: Upload Gitleaks report
-        if: always()
+        if: always()  
         uses: actions/upload-artifact@v4
         with:
           name: gitleaks-report
