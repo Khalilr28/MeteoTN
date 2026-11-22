@@ -104,3 +104,4 @@ jobs:
       - name: Push Docker image
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: docker push $DOCKER_IMAGE_NAME
+        
