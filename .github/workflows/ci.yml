@@ -138,6 +138,45 @@ jobs:
           path: trivy-report.json
           if-no-files-found: ignore
 
+            # DAST: start the image we are about to publish
+      - name: Start container for ZAP scan
+        run: |
+          docker run -d --name meteotn-zap -p 8080:8080 $DOCKER_IMAGE_NAME
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080 > /dev/null && break
+            sleep 2
+          done
+
+      # DAST: OWASP ZAP baseline scan (passive, safe)
+      - name: Run OWASP ZAP baseline scan
+        run: |
+          docker run --rm --network host --user root \
+            -v ${{ github.workspace }}:/zap/wrk/:rw \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:8080 \
+            -r zap-report.html -J zap-report.json -w zap-report.md -I
+
+      # Show the findings directly on the run summary page
+      - name: Add ZAP results to job summary
+        if: always()
+        run: |
+          [ -f zap-report.md ] && cat zap-report.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload ZAP reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: |
+            zap-report.html
+            zap-report.json
+            zap-report.md
+          if-no-files-found: ignore
+
+      - name: Stop ZAP container
+        if: always()
+        run: docker rm -f meteotn-zap || true
+
       # Push Docker image (only if everything above passed)
       - name: Push Docker image
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
